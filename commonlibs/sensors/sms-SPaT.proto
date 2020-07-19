@@ -1,0 +1,110 @@
+package common_sensors ;
+
+	message SMSPackage {
+		required int64 t_ms_rcv_epoch =1  ;
+		required int32 nobjs = 2 ; 
+		enum SimuMode {
+			NORMAL = 0 ; 
+			SIMU = 4 ;
+		}
+		required SimuMode mode = 3 [default = NORMAL] ;
+		required int32 ncyclecnt = 4 ;
+		required int32 ntscanms = 5 ;
+
+		message SensorStatus {
+			
+			required int32 source_device = 1 ;
+			
+			required int32 can_status = 2  [default = 0] ;
+			
+			required int32 sensorpresent = 3 ;
+			
+			enum EthernetStatus {
+				NOTCONNECT = 0 ;
+				CONNECTING =1 ;
+				ISCONNECT =2  ;
+				RELIEVE_ERROR= 3 ; 
+				ERROR_STATE =4 ;
+				WAIT_OF_REPEAT_DATA = 5;
+				UNKNOWN_ERROR = 6 ;
+			}
+			
+			required EthernetStatus ethernet_status = 4 [default=UNKNOWN_ERROR] ;
+			required int32 sensor_timestamp = 5 ;
+		}
+		
+		optional SensorStatus sensor_status = 6 ;
+		
+		message ObjData {
+			required int32 obj_id = 1 ;
+			required double x = 2 ;
+			required double y =3 ;
+			required double vx = 4 [default=0] ;
+			required double vy =5 [default =0] ;
+			required double length_obj = 6 [default=0] ;
+		}
+			
+		repeated ObjData obj_data =7 ;
+	}
+
+		message SMSStatus {
+			required int64 n_total_packets = 1 ;
+			required int64 n_total_errors = 2 ;
+			required int64 n_total_critical_errors = 3 ;
+			required int32 last_error = 4 ;
+			required int64 t_ms_last_critical_error = 5 ;
+			required int64 t_ms_last_error = 6 ;
+			required int64 t_ms_last_valid_packet =7 ;
+			optional int64 t_ms_last_sensor_control = 8 ;
+			optional int64 t_ms_last_obj_control = 9 ;
+			optional int64 t_ms_last_obj_data = 10 ;
+		}
+
+
+	message SignalPhase {
+		enum InterStatus { 
+			UNKNOWN = 0 ; 
+			FLASHING = 1; 
+			NORMAL = 2 ; 
+		}
+		
+		enum PhaseColor {
+			GREEN = 1 ;
+			YELLOW = 2 ;
+			RED = 3 ;
+			COLOR_UNKNOWN = 4 ;
+		}
+		
+		message PhaseStatus {
+			required int32 phase_id  = 1 ;
+			required PhaseColor color = 2 [default=COLOR_UNKNOWN] ;
+		}
+		required int64 t_ms_rcv_epoch= 1 ; 
+		required InterStatus status = 		2 [default=UNKNOWN];
+		repeated PhaseStatus phase_status = 3 ; 
+	}
+
+	message ECLCommStatus {
+		enum CommStatus {
+			OK = 0 ;
+			UDP_BIND_ERROR = 1 ;
+			UDP_OTHER_ERROR = 2 ;
+			ERROR_OUTDATED = 3; 
+			ERROR_PACKET_FORMAT =4 ; 
+			UNKNOWN_ERROR =5 ;
+		}
+		optional CommStatus last_error_status = 1 [default=OK] ;
+		optional int64 t_ms_last_update = 2 ;
+		optional int64 t_ms_last_error = 3 ;
+		
+	}
+	
+message SMSSPaT {
+	required int32 intersection_id    = 1 ;
+	required int64 t_ms_rcv_epoch     = 2 ;
+	optional SignalPhase signal_phase = 3 ;
+	optional ECLCommStatus  ecl_status = 4 ;
+
+	optional SMSPackage sms_package = 5 ;	
+	optional SMSStatus sms_status = 6 ;
+}
