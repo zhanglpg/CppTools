@@ -1,44 +1,24 @@
-#ifndef SINGLETON_HPP
-#define SINGLETON_HPP
+#pragma once
+// Thread-safe singleton using C++11 magic statics (ISO 6.7 [stmt.dcl]).
+// Replaces the previous implementation that used boost::call_once,
+// boost::once_flag, and boost::scoped_ptr.
 
-#include <boost/utility.hpp>
-#include <boost/thread/once.hpp>
-#include <boost/scoped_ptr.hpp>
-
-// Warning: If T's constructor throws, instance() will return a null reference.
-
-namespace commonlibs
-{
+namespace commonlibs {
 
 template<class T>
-class Singleton : private boost::noncopyable
-{
-
+class Singleton {
 public:
-    static T& instance()
-    {
-        boost::call_once(init, flag);
-        return *t;
+    static T& instance() {
+        static T obj;   // guaranteed thread-safe initialisation in C++11
+        return obj;
     }
 
-    static void init() // never throws
-    {
-        t.reset(new T());
-    }
+    Singleton(const Singleton&)            = delete;
+    Singleton& operator=(const Singleton&) = delete;
 
 protected:
-    ~Singleton() {}
-     Singleton() {}
-
-private:
-     static boost::scoped_ptr<T> t;
-     static boost::once_flag flag;
-
+    Singleton()  = default;
+    ~Singleton() = default;
 };
 
-}
-
-template<class T> boost::scoped_ptr<T> commonlibs::Singleton<T>::t(0);
-template<class T> boost::once_flag commonlibs::Singleton<T>::flag = BOOST_ONCE_INIT;
-
-#endif
+} // namespace commonlibs

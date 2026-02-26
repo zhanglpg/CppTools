@@ -1,30 +1,5 @@
-#ifndef __UNIQUE_PTR_HPP_
-#define __UNIQUE_PTR_HPP_
-
-
-#ifdef __GNUC__ 
-#  include <features.h>
-#  if __GNUC_PREREQ(4,4)
-	#define _HAS_UNIQUE_PTR
-	#include <memory>
-	#define UNIQUE_PTR std::unique_ptr
-#  else
-	#include <boost/scoped_ptr.hpp>
-	#define UNIQUE_PTR boost::scoped_ptr
-//       Else
-#  endif
-#elif _MSC_VER > 1500
-//	assume windows has c++0x support (come on, install it!) 
-	#define _HAS_UNIQUE_PTR 
-	#include <memory>
-	#define UNIQUE_PTR std::unique_ptr
-#else
-
-	#include <boost/scoped_ptr.hpp>
-	#define UNIQUE_PTR boost::scoped_ptr
-#endif
-
-
-
-
-#endif 
+// This file is intentionally empty.
+// It was a C++03/C++11 compatibility shim for unique_ptr vs boost::scoped_ptr.
+// With C++17 as the project baseline, use #include <memory> and std::unique_ptr directly.
+#pragma once
+#include <memory>

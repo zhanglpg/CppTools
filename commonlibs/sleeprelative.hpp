@@ -1,42 +1,31 @@
-
-#ifndef __SLEEP_RELATIVE_HPP
-#define __SLEEP_RELATIVE_HPP
-
-#include <boost/shared_ptr.hpp>
-#include <boost/thread.hpp>
-#include <boost/thread/xtime.hpp>
+#pragma once
+// Replaces boost::thread::sleep / boost::posix_time with std::chrono (C++11).
+#include <chrono>
+#include <thread>
 
 namespace commonlibs {
-struct sleep_relative_ms
-{
-public:
-	sleep_relative_ms(int millisecs) 
-	{
-		boost::system_time const start=boost::get_system_time();
-		boost::system_time const timeout=start+boost::posix_time::milliseconds(millisecs); 
-		boost::thread::sleep(timeout) ;
-	} 
-} ;
 
-struct systemtime_tools
-{
-public:
-	static boost::system_time get_system_time( ) {
-		return boost::get_system_time();
-	}
+struct sleep_relative_ms {
+    explicit sleep_relative_ms(int millisecs) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(millisecs));
+    }
+};
 
-	static boost::system_time get_next_system_time_click(const boost::system_time & tprevious, 
-		const int milliseconds) {
-		return tprevious + boost::posix_time::milliseconds(milliseconds);;
-	}
+struct systemtime_tools {
+    using time_point = std::chrono::system_clock::time_point;
 
-	static void sleep_ms_until(const boost::system_time &ptuntil) 
-	{
-		boost::thread::sleep(ptuntil) ;
-	} 
-} ;
+    static time_point get_system_time() {
+        return std::chrono::system_clock::now();
+    }
 
+    static time_point get_next_system_time_click(const time_point &tprevious,
+                                                  int milliseconds) {
+        return tprevious + std::chrono::milliseconds(milliseconds);
+    }
 
-}
-#endif 
+    static void sleep_ms_until(const time_point &ptuntil) {
+        std::this_thread::sleep_until(ptuntil);
+    }
+};
 
+} // namespace commonlibs

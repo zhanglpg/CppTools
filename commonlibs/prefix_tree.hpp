@@ -1,151 +1,95 @@
-#ifndef __PREFIX_COMMONLIBS_TREE_HPP
-
-#define __PREFIX_COMMONLIBS_TREE_HPP
-
-#include <cstdlib>
-#include <cctype> 
+#pragma once
+#include <cctype>
 #include <iostream>
-#include <vector> 
+#include <memory>
+
 namespace commonlibs {
 
-	typedef struct Vertex {
-		int words ;
-		int prefixes ;
-		enum { num_leaves = 26 } ; 
-		Vertex *edges [num_leaves] ;
-		Vertex *edges_refs [num_leaves] ;
+struct Vertex {
+    int words    = 0;
+    int prefixes = 0;
+    enum { num_leaves = 26 };
+    // unique_ptr replaces the raw pointer array + manual destructor.
+    std::unique_ptr<Vertex> edges[num_leaves];
 
-		Vertex () {
-			words = 0 ; 
-			prefixes = 0 ;
-			for(int i = 0 ;i < num_leaves ;++ i) {
-				edges[i] = NULL ;
-				edges_refs[i] = NULL ; 
-			}
-		} ;
+    Vertex() = default;
+    // Destructor is compiler-generated: recursively destroys unique_ptr children.
 
-		~Vertex () {
-			for(int k = 0 ; k < num_leaves ; ++ k) {
-				if(edges[k] != NULL) 
-					delete edges[k] ;
-			}
-		}
-		// add a word: p_word points to the word to be added, size is the length of the string. 
-		// only lowercase alphabet is allowed. 
-		// returns: Number of words
-		int addWord(const char *p_word, size_t size) {
-			if(p_word == NULL || size == 0) {
-				return words ;
-			}
-			Vertex * cur = this ; 
-			for(int k  = 0 ; k < size ; ++ k){ 
-				const char ch = p_word[k] ;
-				if(! ::isalpha(ch)) {
-					std::cerr << "only alphbets are allowed" << std::endl ;
-					return words; 
-				}
+    // Add a word (lowercase alphabet only).  Returns the word count at root.
+    int addWord(const char *p_word, std::size_t size) {
+        if (p_word == nullptr || size == 0) return words;
 
-				char lowerch = ::tolower(ch) ;
-				if(cur->edges[(int) (lowerch - 'a')] == NULL) {
-					cur->edges[(int) (lowerch - 'a')] = new Vertex() ;
-					cur->prefixes ++ ;
-				}
-				cur = cur->edges[(int) (lowerch - 'a')] ;
-			}
-			cur->words ++ ;	
+        Vertex *cur = this;
+        for (std::size_t k = 0; k < size; ++k) {
+            const char ch = p_word[k];
+            if (!::isalpha(static_cast<unsigned char>(ch))) {
+                std::cerr << "only alphabets are allowed\n";
+                return words;
+            }
+            const int idx = ::tolower(static_cast<unsigned char>(ch)) - 'a';
+            if (!cur->edges[idx]) {
+                cur->edges[idx] = std::make_unique<Vertex>();
+                cur->prefixes++;
+            }
+            cur = cur->edges[idx].get();
+        }
+        cur->words++;
+        return words;
+    }
 
-			return words ;
-		} ;
+    // Count exact occurrences of p_word.
+    int countWords(const char *p_word, std::size_t size) {
+        if (p_word == nullptr || size == 0) return words;
 
-		int countWords(const char *p_word, size_t size) {
-			Vertex *cur = this ;
+        const Vertex *cur = this;
+        for (std::size_t k = 0; k < size; ++k) {
+            const char ch = p_word[k];
+            if (!::isalpha(static_cast<unsigned char>(ch))) {
+                std::cerr << "only alphabets are allowed\n";
+                return words;
+            }
+            const int idx = ::tolower(static_cast<unsigned char>(ch)) - 'a';
+            if (!cur->edges[idx]) return 0;
+            cur = cur->edges[idx].get();
+        }
+        return cur->words;
+    }
 
-			if(p_word == NULL || size == 0) {
-				return this->words ;
-			}
+    // Count how many unique children the node reached by p_word has.
+    int countPrefixes(const char *p_word, std::size_t size) {
+        if (p_word == nullptr || size == 0) return prefixes;
 
-			for(int k = 0 ; k < size ; ++ k) {
-				const char ch = p_word[k] ;
-				if(! ::isalpha(ch)) {
-					std::cerr << "only alphbets are allowed" << std::endl ;
-					return words; 
-				}
+        const Vertex *cur = this;
+        for (std::size_t k = 0; k < size; ++k) {
+            const char ch = p_word[k];
+            if (!::isalpha(static_cast<unsigned char>(ch))) {
+                std::cerr << "only alphabets are allowed\n";
+                return 0;
+            }
+            const int idx = ::tolower(static_cast<unsigned char>(ch)) - 'a';
+            if (!cur->edges[idx]) return 0;
+            cur = cur->edges[idx].get();
+        }
+        return cur->prefixes;
+    }
+};
 
-				char lowerch = ::tolower(ch) ;
+class traverser_tree {
+public:
+    void traverser_recursive(Vertex *root) {
+        traverser_recursive_imp(root, -1, 0);
+    }
+private:
+    void traverser_recursive_imp(const Vertex *root, int k, int level) {
+        if (!root) return;
+        if (k >= 0) {
+            for (int i = 0; i < level; ++i) std::cout << ' ';
+            std::cout << static_cast<char>('a' + k)
+                      << "( " << root->words << "," << root->prefixes << ")\n";
+        }
+        for (int i = 0; i < 26; ++i)
+            traverser_recursive_imp(root->edges[i].get(), i, level + 1);
+    }
+};
 
-				if(cur->edges[(int) lowerch -'a'] ==  NULL) {
-					return 0 ;//  no matched words
-				}
-				else {
-					cur = cur ->edges[(int) lowerch -'a']  ;
-				}
-			
-			}
-			return cur->words ;
-		}; 
-
-		int countPrefixes(const char *p_word, size_t size) {
-			Vertex *cur = this ;
-
-			if(p_word == NULL || size == 0) {
-				return this->prefixes ;
-			}
-
-			for(int k = 0 ; k < size ; ++ k) {
-				const char ch = p_word[k] ;
-				if(! ::isalpha(ch)) {
-					std::cerr << "only alphbets are allowed" << std::endl ;
-					return 0 ; 
-				}
-
-				char lowerch = ::tolower(ch) ;
-
-				if(cur->edges[(int) lowerch -'a'] ==  NULL) {
-					return 0 ;//  no matched words
-				}
-				else {
-					cur = cur ->edges[(int) lowerch -'a']  ;
-				}
-			
-			}
-			return cur->prefixes ;
-		}; 
-
-	} Vertex ;
-
-
-
-	typedef struct traverser_Vertex {
-		Vertex * v ; 
-		int  cindex ;
-		traverser_Vertex (Vertex * v_) : v(v_), cindex(0) {} 
-	} traverser_Vertex ;
-
-
-	class traverser_tree {
-	public: 
-		void traverser_recursive(Vertex *root) {
-			traverser_recursive_imp(root, -1, 0) ;
-		}
-	private: 
-		void traverser_recursive_imp(Vertex * root, int k, int level) {
-			if(root == NULL) {
-				return  ;
-			}
-			if(k >= 0) {
-				for(int i = 0 ; i < level ; ++ i) 
-					std::cout << " " ; 
-				std::cout <<  (char)((int) ('a') + k ) << "( " << root->words << "," << root->prefixes <<")" <<std::endl ;
-			}
-			for(int k = 0; k < 26; ++ k) {
-				traverser_recursive_imp(root->edges[k], k, level + 1) ;
-			}
-		}
-		std::vector<traverser_Vertex> v_t;
-	} ;
-}
-
-
-
-
-#endif
+} // namespace commonlibs
