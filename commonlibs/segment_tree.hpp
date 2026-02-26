@@ -27,6 +27,7 @@ public:
 	void initialize(int node, int begin, int end) {
 		if(node >= msize) {
 			std::cerr << "Error, index " << node << " > msize =" << msize <<std::endl ;
+			return ;
 		}
 		if(begin == end) {
 			M[node] = begin ;
