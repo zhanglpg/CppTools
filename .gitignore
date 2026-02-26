@@ -34,3 +34,5 @@
 # DS store
 .DS_store
 
+# CMake build directory
+build/
