@@ -1,9 +1,8 @@
 #ifndef SINGLETON_HPP
 #define SINGLETON_HPP
 
-#include <boost/utility.hpp>
-#include <boost/thread/once.hpp>
-#include <boost/scoped_ptr.hpp>
+#include <memory>
+#include <mutex>
 
 // Warning: If T's constructor throws, instance() will return a null reference.
 
@@ -11,19 +10,21 @@ namespace commonlibs
 {
 
 template<class T>
-class Singleton : private boost::noncopyable
+class Singleton
 {
+    Singleton(const Singleton&) = delete;
+    Singleton& operator=(const Singleton&) = delete;
 
 public:
     static T& instance()
     {
-        boost::call_once(init, flag);
-        return *t;
+        std::call_once(flag_, init);
+        return *t_;
     }
 
     static void init() // never throws
     {
-        t.reset(new T());
+        t_.reset(new T());
     }
 
 protected:
@@ -31,14 +32,14 @@ protected:
      Singleton() {}
 
 private:
-     static boost::scoped_ptr<T> t;
-     static boost::once_flag flag;
+     static std::unique_ptr<T> t_;
+     static std::once_flag flag_;
 
 };
 
 }
 
-template<class T> boost::scoped_ptr<T> commonlibs::Singleton<T>::t(0);
-template<class T> boost::once_flag commonlibs::Singleton<T>::flag = BOOST_ONCE_INIT;
+template<class T> std::unique_ptr<T> commonlibs::Singleton<T>::t_;
+template<class T> std::once_flag commonlibs::Singleton<T>::flag_;
 
 #endif

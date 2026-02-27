@@ -11,8 +11,6 @@ add_cpptools_test(test_prefix_tree   test_prefix_tree.cpp)
 add_cpptools_test(test_algorithms    test_algorithms.cpp)
 add_cpptools_test(test_errorstatus   test_errorstatus.cpp)
 
-# Tests that require Boost uBLAS
-if(Boost_FOUND)
-    add_cpptools_test(test_matrixinversion test_matrixinversion.cpp)
-    add_cpptools_test(test_kalman          test_kalman.cpp)
-endif()
+# Matrix and Kalman tests (no longer require Boost)
+add_cpptools_test(test_matrixinversion test_matrixinversion.cpp)
+add_cpptools_test(test_kalman          test_kalman.cpp)
