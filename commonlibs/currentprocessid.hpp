@@ -4,7 +4,7 @@
 #include <string>
 #include <sstream>
 
-namespace commonlibs 
+namespace commonlibs
 {
 
 template <class T>
@@ -31,7 +31,7 @@ public:
 #else
 		return static_cast<unsigned int>(getpid()) ;
 #endif
-		
+
 	}
 //	static std::string cmdrm ;
 #ifdef WIN32
@@ -48,24 +48,24 @@ public:
 
 
 
-class pidsaver 
+class pidsaver
 {
 private:
 	std::string s_piddir ;
 	unsigned int pid ;
 public:
-	pidsaver(std::string s_pid_dir_, std::string s_filename_ = "")  : s_piddir(s_pid_dir_) 
+	pidsaver(std::string s_pid_dir_, std::string s_filename_ = "")  : s_piddir(s_pid_dir_)
 	{
 		pid = getprocessid::get_current_process_id() ;
-		std::string cmd ; 
+		std::string cmd ;
 		if(s_filename_ == "")
 		{
 			s_filename_ = to_string<unsigned int>(pid) ;
 		}
 		if(s_piddir != "")
 		{
-			cmd = std::string("echo \"") + 
-				boost::lexical_cast<std::string, unsigned int>(pid) + "\" > " 
+			cmd = std::string("echo \"") +
+				std::to_string(pid) + "\" > "
 				+ s_piddir + "/" + s_filename_ ;
 			::system(cmd.c_str()) ;
 		}
@@ -75,8 +75,8 @@ public:
 	{
 		if(s_piddir != "")
 		{
-			std::string cmd ; 
-			cmd = getprocessid::cmdrm() + " " + 
+			std::string cmd ;
+			cmd = getprocessid::cmdrm() + " " +
 				s_piddir + "/" + to_string<unsigned int>(pid) ;
 			::system(cmd.c_str()) ;
 		}

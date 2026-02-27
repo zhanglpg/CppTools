@@ -6,8 +6,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-namespace ublas = boost::numeric::ublas;
-using Matrix = ublas::matrix<double>;
+using Matrix = commonlibs::Matrix<double>;
 
 static constexpr double kEps = 1e-6;
 
@@ -67,7 +66,7 @@ static Matrix col2(double v0, double v1)
 }
 static Matrix eye(int n)
 {
-    return ublas::identity_matrix<double>(n);
+    return Matrix::identity(static_cast<std::size_t>(n));
 }
 
 // ---- 1-D tests -------------------------------------------------------------

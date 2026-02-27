@@ -2,8 +2,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-namespace ublas = boost::numeric::ublas;
-using Matrix = ublas::matrix<double>;
+using Matrix = commonlibs::Matrix<double>;
 
 // Tolerance for floating-point comparisons
 static constexpr double kEps = 1e-9;
@@ -11,7 +10,7 @@ static constexpr double kEps = 1e-9;
 // Build the product A * B and return it
 static Matrix multiply(const Matrix &A, const Matrix &B)
 {
-    return ublas::prod(A, B);
+    return Matrix::multiply(A, B);
 }
 
 // Check that |x - expected| < eps for every element
@@ -31,7 +30,7 @@ static void expect_near_matrix(const Matrix &result,
 
 TEST(MatrixInversion, Identity2x2)
 {
-    Matrix I = ublas::identity_matrix<double>(2);
+    Matrix I = Matrix::identity(2);
     Matrix inv(2, 2);
     EXPECT_TRUE(commonlibs::InvertMatrix<double>(I, inv));
     expect_near_matrix(inv, I);
@@ -39,7 +38,7 @@ TEST(MatrixInversion, Identity2x2)
 
 TEST(MatrixInversion, Identity3x3)
 {
-    Matrix I = ublas::identity_matrix<double>(3);
+    Matrix I = Matrix::identity(3);
     Matrix inv(3, 3);
     EXPECT_TRUE(commonlibs::InvertMatrix<double>(I, inv));
     expect_near_matrix(inv, I);
@@ -66,13 +65,13 @@ TEST(MatrixInversion, Simple2x2)
 TEST(MatrixInversion, DiagonalMatrix)
 {
     // diag(2,4,8) → inv = diag(0.5, 0.25, 0.125)
-    Matrix D = ublas::zero_matrix<double>(3, 3);
+    Matrix D(3, 3);  // zero-initialized
     D(0,0) = 2; D(1,1) = 4; D(2,2) = 8;
 
     Matrix inv(3, 3);
     EXPECT_TRUE(commonlibs::InvertMatrix<double>(D, inv));
 
-    Matrix expected = ublas::zero_matrix<double>(3, 3);
+    Matrix expected(3, 3);  // zero-initialized
     expected(0,0) = 0.5; expected(1,1) = 0.25; expected(2,2) = 0.125;
     expect_near_matrix(inv, expected);
 }
@@ -90,14 +89,14 @@ TEST(MatrixInversion, ProductIsIdentity_3x3)
     ASSERT_TRUE(commonlibs::InvertMatrix<double>(A, inv));
 
     Matrix product = multiply(A, inv);
-    Matrix I = ublas::identity_matrix<double>(3);
+    Matrix I = Matrix::identity(3);
     expect_near_matrix(product, I, 1e-10);
 }
 
 TEST(MatrixInversion, ProductIsIdentity_4x4)
 {
     // Upper-triangular with all-1 diagonal
-    Matrix A = ublas::identity_matrix<double>(4);
+    Matrix A = Matrix::identity(4);
     A(0,1) = 1; A(0,2) = 2; A(0,3) = 3;
     A(1,2) = 4; A(1,3) = 5;
     A(2,3) = 6;
@@ -106,7 +105,7 @@ TEST(MatrixInversion, ProductIsIdentity_4x4)
     ASSERT_TRUE(commonlibs::InvertMatrix<double>(A, inv));
 
     Matrix product = multiply(A, inv);
-    expect_near_matrix(product, ublas::identity_matrix<double>(4), 1e-10);
+    expect_near_matrix(product, Matrix::identity(4), 1e-10);
 }
 
 // ---- singular matrix -------------------------------------------------------
@@ -124,7 +123,7 @@ TEST(MatrixInversion, SingularMatrix_ReturnsFalse)
 
 TEST(MatrixInversion, AllZeroMatrix_ReturnsFalse)
 {
-    Matrix A = ublas::zero_matrix<double>(3, 3);
+    Matrix A(3, 3);  // zero-initialized
     Matrix inv(3, 3);
     EXPECT_FALSE(commonlibs::InvertMatrix<double>(A, inv));
 }

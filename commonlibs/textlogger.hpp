@@ -1,21 +1,23 @@
 #ifndef __TEXT_LOGGER_HPP
 #define __TEXT_LOGGER_HPP
-#include "boost/filesystem.hpp"
+#include <filesystem>
+#include <chrono>
+#include <ctime>
 #include <iostream>
 #include <fstream>
 #include <string>
 
 namespace commonlibs {
+
 class log_control{
 	public:
-		log_control(bool b_l_ , const std::string &s_dirname_, 
+		log_control(bool b_l_ , const std::string &s_dirname_,
 			unsigned int u_period_secs_,
-			bool b_daily = false, 
+			bool b_daily = false,
 			const std::string &s_nameprefix_ = std::string(""),
-			const std::string &s_nameext_ = std::string(""), 
-			std::ios_base::openmode omode_ = std::ios_base::out) 
+			const std::string &s_nameext_ = std::string(""),
+			std::ios_base::openmode omode_ = std::ios_base::out)
 		{
-			//std::cout << "Building the logger..." << std::endl ;
 			b_logging = b_l_ ;
 			b_logstarted = false ;
 			s_logdir = s_dirname_ ;
@@ -30,81 +32,93 @@ class log_control{
 			this->close_all() ;
 		}
 private:
-	void make_name(boost::posix_time::ptime& ptnow, unsigned int u_extra_id , bool use_id , std::string &s_name)
+	using time_point = std::chrono::system_clock::time_point;
+
+	static std::string tp_to_iso_string(const time_point &tp)
 	{
-		s_name = 
-			s_prefix + (use_id? 
-				boost::lexical_cast<std::string, unsigned int>(u_extra_id) : std::string(""))
-				+ std::string("_") + 
-					boost::posix_time::to_iso_string(ptnow) +
+		std::time_t t = std::chrono::system_clock::to_time_t(tp);
+		std::tm *ltm = std::localtime(&t);
+		char buf[32];
+		std::strftime(buf, sizeof(buf), "%Y%m%dT%H%M%S", ltm);
+		return std::string(buf);
+	}
+
+	static int get_local_date_int(const time_point &tp)
+	{
+		std::time_t t = std::chrono::system_clock::to_time_t(tp);
+		std::tm *ltm = std::localtime(&t);
+		return (ltm->tm_year * 10000) + (ltm->tm_mon * 100) + ltm->tm_mday;
+	}
+
+	void make_name(time_point &ptnow, unsigned int u_extra_id, bool use_id, std::string &s_name)
+	{
+		s_name =
+			s_prefix + (use_id ?
+				std::to_string(u_extra_id) : std::string(""))
+				+ std::string("_") +
+					tp_to_iso_string(ptnow) +
 			s_nameext;
 	}
 	public:
-		int log_string(const std::string &s_pc , unsigned int u_extra_id = 0 , bool use_id = false) 
+		int log_string(const std::string &s_pc , unsigned int u_extra_id = 0 , bool use_id = false)
 		{
-			return log_string(s_pc.c_str() , (unsigned int)s_pc.size() , u_extra_id, use_id) ; 
+			return log_string(s_pc.c_str() , (unsigned int)s_pc.size() , u_extra_id, use_id) ;
 		}
 
 		int log_string(const char *pc, unsigned int u_size, unsigned int u_extra_id = 0, bool use_id = false)
 		{
-			
+
 			if(!b_logging)
 				return 0;
 
-			boost::posix_time::ptime ptnow =
-				boost::posix_time::ptime(
-				boost::posix_time::second_clock::local_time()) ;
+			time_point ptnow = std::chrono::system_clock::now();
 
-			std::string s_filenamenew ; 
+			std::string s_filenamenew ;
 			bool b_start_new = false ;
 			if(!b_logstarted) {
 				make_name(ptnow, u_extra_id , use_id , s_filenamenew) ;
 				b_start_new = true ;
 			}
 			else {
-				boost::posix_time::time_duration td =
-					ptnow - pt_lastlog ; 
-				if(td.total_seconds() > (int)u_period_seconds && !b_log_daily)
+				auto td = std::chrono::duration_cast<std::chrono::seconds>(
+					ptnow - pt_lastlog).count();
+				if(td > static_cast<long long>(u_period_seconds) && !b_log_daily)
 				{
 					make_name(ptnow, u_extra_id , use_id , s_filenamenew) ;
 					b_start_new = true ;
 				}
-				else if(b_log_daily && ptnow.date() != pt_lastlog.date()) // every day
+				else if(b_log_daily && get_local_date_int(ptnow) != get_local_date_int(pt_lastlog))
 				{
 					make_name(ptnow, u_extra_id , use_id , s_filenamenew) ;
 					b_start_new = true ;
 				}
 			}
-			boost::filesystem::path thepath_  =
-				boost::filesystem::path(s_logdir) ;
+			std::filesystem::path thepath_ = std::filesystem::path(s_logdir) ;
 			if(true == b_start_new)
 			{
 				bool b_newfile_name_good = false ;
-				if(!boost::filesystem::exists(thepath_))
+				if(!std::filesystem::exists(thepath_))
 				{
-				//	std::cerr << "Could not find the logging dir :"
-				//		<< thepath_.string() << endl ;
 					return -1 ;
 				}
-				if (!boost::filesystem::is_directory(thepath_))
+				if (!std::filesystem::is_directory(thepath_))
 				{
-				//	std::cerr << thepath_.string() << ": is not a directory!" << endl ;
 					return -1 ;
 				}
-				std::string s_filenamenew_log = 
+				std::string s_filenamenew_log =
 					s_filenamenew + std::string(".log") ;
 				std::string fullfilename_ = (thepath_ / s_filenamenew_log).string()  ;
 
-				if(boost::filesystem::exists(fullfilename_)) {
-					int inc = 0 ;	
+				if(std::filesystem::exists(fullfilename_)) {
+					int inc = 0 ;
 					do {
-						s_filenamenew_log = 
-							s_filenamenew + std::string("-")+ boost::lexical_cast<std::string, unsigned int>( ++ ex) + 
+						s_filenamenew_log =
+							s_filenamenew + std::string("-") + std::to_string(++ex) +
 							std::string(".log") ;
 						fullfilename_ = (thepath_ / s_filenamenew_log).string()  ;
 						inc ++ ;
 					}
-					while(boost::filesystem::exists(fullfilename_) && inc < 100 ) ;
+					while(std::filesystem::exists(fullfilename_) && inc < 100 ) ;
 					if(inc < 100)
 						b_newfile_name_good = true ;
 				}
@@ -121,7 +135,7 @@ private:
 				pt_lastlog = ptnow ;
 				ofs.write(pc , u_size) ;
 			}
-			else 
+			else
 			{
 				if(ofs.is_open())
 					ofs.write(pc , u_size) ;
@@ -136,17 +150,15 @@ private:
 		}
 	private:
 		bool b_logging ;
-		std::string s_logdir , s_prefix ,s_nameext;
-		std::string s_logfilename ; 
+		std::string s_logdir , s_prefix , s_nameext;
+		std::string s_logfilename ;
 		unsigned int u_period_seconds ;
-		bool b_logstarted ; 
+		bool b_logstarted ;
 		bool b_log_daily ;
-		boost::posix_time::ptime pt_lastlog  ;
+		time_point pt_lastlog ;
 		std::ofstream ofs ;
 		unsigned int ex ;
-		std::ios_base::openmode omode ; 
+		std::ios_base::openmode omode ;
 	} ;
-} 
+}
 #endif
-
-
