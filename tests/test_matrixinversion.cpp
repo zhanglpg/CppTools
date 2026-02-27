@@ -138,3 +138,134 @@ TEST(MatrixInversion, Scalar1x1)
     EXPECT_TRUE(commonlibs::InvertMatrix<double>(A, inv));
     EXPECT_NEAR(0.2, inv(0,0), kEps);
 }
+
+// ============================================================================
+// Matrix class arithmetic and structural operations
+// ============================================================================
+
+TEST(Matrix, DefaultConstructor_ZeroSize)
+{
+    Matrix m;
+    EXPECT_EQ(0u, m.size1());
+    EXPECT_EQ(0u, m.size2());
+}
+
+TEST(Matrix, ConstructorZeroInitializes)
+{
+    Matrix m(2, 3);
+    EXPECT_EQ(2u, m.size1());
+    EXPECT_EQ(3u, m.size2());
+    for (std::size_t i = 0; i < 2; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+            EXPECT_EQ(0.0, m(i, j));
+}
+
+TEST(Matrix, AdditionElementWise)
+{
+    Matrix A(2, 2), B(2, 2);
+    A(0,0)=1; A(0,1)=2; A(1,0)=3; A(1,1)=4;
+    B(0,0)=5; B(0,1)=6; B(1,0)=7; B(1,1)=8;
+
+    Matrix C = A + B;
+    EXPECT_EQ(2u, C.size1());
+    EXPECT_EQ(2u, C.size2());
+    EXPECT_NEAR( 6.0, C(0,0), kEps);
+    EXPECT_NEAR( 8.0, C(0,1), kEps);
+    EXPECT_NEAR(10.0, C(1,0), kEps);
+    EXPECT_NEAR(12.0, C(1,1), kEps);
+}
+
+TEST(Matrix, SubtractionElementWise)
+{
+    Matrix A(2, 2), B(2, 2);
+    A(0,0)=9; A(0,1)=7; A(1,0)=5; A(1,1)=3;
+    B(0,0)=1; B(0,1)=2; B(1,0)=3; B(1,1)=4;
+
+    Matrix C = A - B;
+    EXPECT_NEAR(8.0, C(0,0), kEps);
+    EXPECT_NEAR(5.0, C(0,1), kEps);
+    EXPECT_NEAR(2.0, C(1,0), kEps);
+    EXPECT_NEAR(-1.0, C(1,1), kEps);
+}
+
+TEST(Matrix, AdditionWithIdentityGivesShifted)
+{
+    Matrix A(3, 3);
+    A(0,0)=1; A(1,1)=2; A(2,2)=3;
+    Matrix I = Matrix::identity(3);
+    Matrix result = A + I;
+    EXPECT_NEAR(2.0, result(0,0), kEps);
+    EXPECT_NEAR(3.0, result(1,1), kEps);
+    EXPECT_NEAR(4.0, result(2,2), kEps);
+    EXPECT_NEAR(0.0, result(0,1), kEps);
+}
+
+TEST(Matrix, Transpose_Square)
+{
+    Matrix A(3, 3);
+    A(0,0)=1; A(0,1)=2; A(0,2)=3;
+    A(1,0)=4; A(1,1)=5; A(1,2)=6;
+    A(2,0)=7; A(2,1)=8; A(2,2)=9;
+
+    Matrix T = A.transpose();
+    EXPECT_EQ(3u, T.size1());
+    EXPECT_EQ(3u, T.size2());
+    for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+            EXPECT_NEAR(A(i,j), T(j,i), kEps);
+}
+
+TEST(Matrix, Transpose_Rectangular_2x3_Gives_3x2)
+{
+    Matrix A(2, 3);
+    A(0,0)=1; A(0,1)=2; A(0,2)=3;
+    A(1,0)=4; A(1,1)=5; A(1,2)=6;
+
+    Matrix T = A.transpose();
+    EXPECT_EQ(3u, T.size1());
+    EXPECT_EQ(2u, T.size2());
+    EXPECT_NEAR(1.0, T(0,0), kEps); EXPECT_NEAR(4.0, T(0,1), kEps);
+    EXPECT_NEAR(2.0, T(1,0), kEps); EXPECT_NEAR(5.0, T(1,1), kEps);
+    EXPECT_NEAR(3.0, T(2,0), kEps); EXPECT_NEAR(6.0, T(2,1), kEps);
+}
+
+TEST(Matrix, Transpose_DoubleTranspose_IsOriginal)
+{
+    Matrix A(2, 3);
+    A(0,0)=1; A(0,1)=2; A(0,2)=3;
+    A(1,0)=4; A(1,1)=5; A(1,2)=6;
+    Matrix TT = A.transpose().transpose();
+    EXPECT_EQ(2u, TT.size1());
+    EXPECT_EQ(3u, TT.size2());
+    for (std::size_t i = 0; i < 2; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+            EXPECT_NEAR(A(i,j), TT(i,j), kEps);
+}
+
+TEST(Matrix, Transpose_Identity_IsIdentity)
+{
+    Matrix I = Matrix::identity(4);
+    Matrix T = I.transpose();
+    expect_near_matrix(T, I);
+}
+
+TEST(Matrix, Multiply_NonSquare)
+{
+    // 2x3 * 3x2 = 2x2
+    Matrix A(2, 3), B(3, 2);
+    A(0,0)=1; A(0,1)=2; A(0,2)=3;
+    A(1,0)=4; A(1,1)=5; A(1,2)=6;
+    B(0,0)=7;  B(0,1)=8;
+    B(1,0)=9;  B(1,1)=10;
+    B(2,0)=11; B(2,1)=12;
+
+    Matrix C = Matrix::multiply(A, B);
+    EXPECT_EQ(2u, C.size1());
+    EXPECT_EQ(2u, C.size2());
+    // Row 0: [1*7+2*9+3*11, 1*8+2*10+3*12] = [58, 64]
+    EXPECT_NEAR( 58.0, C(0,0), kEps);
+    EXPECT_NEAR( 64.0, C(0,1), kEps);
+    // Row 1: [4*7+5*9+6*11, 4*8+5*10+6*12] = [139, 154]
+    EXPECT_NEAR(139.0, C(1,0), kEps);
+    EXPECT_NEAR(154.0, C(1,1), kEps);
+}
