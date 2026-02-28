@@ -190,3 +190,79 @@ TEST(PosixTimeUtil, PtimeFromMs_GetIsoStringLocal_NoCrash)
         EXPECT_EQ(15u, s.size());
     });
 }
+
+// ---------------------------------------------------------------------------
+// Year 2038 boundary and beyond
+// ---------------------------------------------------------------------------
+
+TEST(PosixTimeUtil, Year2038Boundary)
+{
+    // 2^31 - 1 = 2147483647 -> 2038-01-19 03:14:07 UTC
+    auto tp = std::chrono::system_clock::time_point(
+        std::chrono::seconds(2147483647LL));
+    EXPECT_EQ("20380119T031407", commonlibs::to_iso_string(tp));
+}
+
+TEST(PosixTimeUtil, Post2038Time)
+{
+    // 2040-01-01 00:00:00 UTC = 2208988800 seconds since epoch
+    auto tp = std::chrono::system_clock::time_point(
+        std::chrono::seconds(2208988800LL));
+    EXPECT_EQ("20400101T000000", commonlibs::to_iso_string(tp));
+}
+
+// ---------------------------------------------------------------------------
+// Millisecond precision round-trip
+// ---------------------------------------------------------------------------
+
+TEST(PosixTimeUtil, MillisecondPrecisionPreserved)
+{
+    long long ms = 946684800123LL;  // 2000-01-01 00:00:00.123 UTC
+    auto tp = commonlibs::ptime_from_milliseconds_since_epoch::get_ptime(ms);
+    commonlibs::milliseconds_since_epoch_from_posixtime f;
+    EXPECT_EQ(ms, f(tp));
+}
+
+TEST(PosixTimeUtil, MillisecondPrecision_SubSecond)
+{
+    // Verify that sub-second offsets are preserved across round-trip
+    for (int ms_offset = 0; ms_offset < 1000; ms_offset += 100) {
+        long long ms = kEpochMs + ms_offset;
+        auto tp = commonlibs::ptime_from_milliseconds_since_epoch::get_ptime(ms);
+        commonlibs::milliseconds_since_epoch_from_posixtime f;
+        EXPECT_EQ(ms, f(tp)) << "Failed at offset " << ms_offset;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// UTC-to-local produces a valid, consistent string
+// ---------------------------------------------------------------------------
+
+TEST(PosixTimeUtil, UtcToLocal_ProducesValidIsoString)
+{
+    auto s = commonlibs::ptime_from_milliseconds_since_epoch::get_iso_string_local(kEpochMs);
+    EXPECT_EQ(15u, s.size());
+    // Year should be 1999 or 2000 depending on timezone offset
+    int year = std::stoi(s.substr(0, 4));
+    EXPECT_GE(year, 1999);
+    EXPECT_LE(year, 2000);
+}
+
+// ---------------------------------------------------------------------------
+// Additional date formatting
+// ---------------------------------------------------------------------------
+
+TEST(PosixTimeUtil, ToSimpleString_EpochPlus1Day)
+{
+    auto tp = std::chrono::system_clock::time_point(
+        std::chrono::seconds(86400LL));
+    EXPECT_EQ("1970-Jan-02 00:00:00", commonlibs::to_simple_string(tp));
+}
+
+TEST(PosixTimeUtil, ToIsoString_NewYears2024)
+{
+    // 2024-01-01 00:00:00 UTC = 1704067200 seconds since epoch
+    auto tp = std::chrono::system_clock::time_point(
+        std::chrono::seconds(1704067200LL));
+    EXPECT_EQ("20240101T000000", commonlibs::to_iso_string(tp));
+}

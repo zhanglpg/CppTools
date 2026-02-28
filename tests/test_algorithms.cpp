@@ -210,3 +210,119 @@ TEST(Dijkstra, ZeroWeightEdge)
     EXPECT_EQ(0, dist(1));
     EXPECT_EQ(5, dist(2));
 }
+
+// ---- path reconstruction ---------------------------------------------------
+
+// Parse the path vertices from print_path output.
+// Output format:  "shortest path from ...\n3 <== 2 <== 1 <== 0\n"
+// Returns the sequence of vertex IDs from destination to source.
+static std::vector<int> extract_path(const std::string &output)
+{
+    std::vector<int> path;
+    auto nl = output.find('\n');
+    if (nl == std::string::npos) return path;
+    std::string pathline = output.substr(nl + 1);
+
+    // Replace "<==" with spaces so we can parse ints directly
+    std::string::size_type pos;
+    while ((pos = pathline.find("<==")) != std::string::npos)
+        pathline.replace(pos, 3, " ");
+
+    std::istringstream iss(pathline);
+    int v;
+    while (iss >> v)
+        path.push_back(v);
+    return path;
+}
+
+TEST(Dijkstra, PathReconstruction_LinearChain)
+{
+    G_vvii g = make_graph(4);
+    add_edge(g, 0, 1, 1);
+    add_edge(g, 1, 2, 2);
+    add_edge(g, 2, 3, 3);
+    shortest_path_algo algo;
+    algo.Dijkstra(g, 0);
+
+    auto path = extract_path(capture_cout([&]{ algo.print_path(3); }));
+    // 3 <== 2 <== 1 <== 0
+    ASSERT_EQ(4u, path.size());
+    EXPECT_EQ(3, path[0]);
+    EXPECT_EQ(2, path[1]);
+    EXPECT_EQ(1, path[2]);
+    EXPECT_EQ(0, path[3]);
+}
+
+TEST(Dijkstra, PathReconstruction_TakesShortcut)
+{
+    // 0->1->2 cost 2; 0->2 direct cost 10
+    G_vvii g = make_graph(3);
+    add_edge(g, 0, 1, 1);
+    add_edge(g, 1, 2, 1);
+    add_edge(g, 0, 2, 10);
+    shortest_path_algo algo;
+    algo.Dijkstra(g, 0);
+
+    auto path = extract_path(capture_cout([&]{ algo.print_path(2); }));
+    ASSERT_EQ(3u, path.size());
+    EXPECT_EQ(2, path[0]);
+    EXPECT_EQ(1, path[1]);
+    EXPECT_EQ(0, path[2]);
+}
+
+TEST(Dijkstra, PathReconstruction_SourceToSelf)
+{
+    G_vvii g = make_graph(2);
+    add_edge(g, 0, 1, 1);
+    shortest_path_algo algo;
+    algo.Dijkstra(g, 0);
+
+    auto path = extract_path(capture_cout([&]{ algo.print_path(0); }));
+    // Source has no predecessor — path is just [0]
+    ASSERT_EQ(1u, path.size());
+    EXPECT_EQ(0, path[0]);
+}
+
+TEST(Dijkstra, LargeGraph_10Vertices)
+{
+    G_vvii g = make_graph(10);
+    // Linear chain 0->1->...->9, weight 1 each
+    for (int i = 0; i < 9; ++i)
+        add_edge(g, i, i + 1, 1);
+    // Shortcut 0->5, weight 3
+    add_edge(g, 0, 5, 3);
+
+    shortest_path_algo algo;
+    algo.Dijkstra(g, 0);
+
+    auto dist = [&](int v) {
+        return extract_distance(capture_cout([&]{ algo.print_path(v); }));
+    };
+    // Via shortcut 0->5 costs 3 (vs chain cost 5)
+    EXPECT_EQ(3, dist(5));
+    // To 9: shortcut + chain 5->6->7->8->9 = 3+4 = 7 (vs full chain = 9)
+    EXPECT_EQ(7, dist(9));
+}
+
+TEST(Dijkstra, DiamondGraph)
+{
+    //   1
+    //  / \
+    // 0   3
+    //  \ /
+    //   2
+    G_vvii g = make_graph(4);
+    add_edge(g, 0, 1, 1);
+    add_edge(g, 0, 2, 5);
+    add_edge(g, 1, 3, 2);
+    add_edge(g, 2, 3, 1);
+
+    shortest_path_algo algo;
+    algo.Dijkstra(g, 0);
+
+    auto dist = [&](int v) {
+        return extract_distance(capture_cout([&]{ algo.print_path(v); }));
+    };
+    // 0->1->3 = 3; 0->2->3 = 6
+    EXPECT_EQ(3, dist(3));
+}

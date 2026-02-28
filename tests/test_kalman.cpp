@@ -163,3 +163,74 @@ TEST(Kalman2D, UpdateKalman_PositionFollowsLinearTrajectory)
     EXPECT_NEAR(50.0, k.x(0,0), 2.0);
     EXPECT_NEAR(1.0,  k.x(1,0), 0.5);
 }
+
+// ---- Covariance validation --------------------------------------------------
+
+TEST(Kalman1D, CovarianceDecreases)
+{
+    // With repeated observations of the same value, the covariance (uncertainty)
+    // should monotonically decrease and converge to a small value.
+    KalmanConstPos1D k;
+    Matrix initV = eye(1);
+    initV(0,0) = 10.0;   // start with high uncertainty
+    k.update_kalman_init(col1(5.0), col1(0.0), initV);
+
+    double prev_var = k.V(0,0);
+    for (int i = 0; i < 50; ++i) {
+        k.update_kalman(col1(5.0));
+        EXPECT_LE(k.V(0,0), prev_var + 1e-10)
+            << "Covariance increased on step " << i;
+        prev_var = k.V(0,0);
+    }
+    // After 50 steps, covariance should be small
+    EXPECT_LT(k.V(0,0), 0.1);
+}
+
+TEST(Kalman2D, CovarianceDecreasesDuringTracking)
+{
+    KalmanConstVel2D k;
+    Matrix initV = eye(2);
+    initV(0,0) = 100.0;
+    initV(1,1) = 10.0;
+    k.update_kalman_init(col1(0.0), col2(0.0, 1.0), initV);
+
+    double init_pos_var = k.V(0,0);
+
+    for (int t = 1; t <= 50; ++t)
+        k.update_kalman(col1(static_cast<double>(t)));
+
+    // Position variance should be significantly reduced
+    EXPECT_LT(k.V(0,0), init_pos_var);
+}
+
+TEST(Kalman1D, HighObservationNoise_WiderCovariance)
+{
+    // A filter with higher R (observation noise) should have larger
+    // steady-state covariance since it trusts observations less.
+
+    // Low R
+    KalmanConstPos1D k_low;
+    k_low.R(0,0) = 0.1;
+    k_low.update_kalman_init(col1(5.0), col1(0.0), eye(1));
+    for (int i = 0; i < 100; ++i) k_low.update_kalman(col1(5.0));
+
+    // High R
+    KalmanConstPos1D k_high;
+    k_high.R(0,0) = 100.0;
+    k_high.update_kalman_init(col1(5.0), col1(0.0), eye(1));
+    for (int i = 0; i < 100; ++i) k_high.update_kalman(col1(5.0));
+
+    EXPECT_GT(k_high.V(0,0), k_low.V(0,0));
+}
+
+TEST(Kalman1D, CovarianceIsPositive)
+{
+    // The covariance must remain positive throughout all updates.
+    KalmanConstPos1D k;
+    k.update_kalman_init(col1(5.0), col1(0.0), eye(1));
+
+    for (int i = 0; i < 200; ++i) {
+        k.update_kalman(col1(5.0));
+        EXPECT_GT(k.V(0,0), 0.0) << "Covariance non-positive on step " << i;
+    }
+}

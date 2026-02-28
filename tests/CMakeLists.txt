@@ -20,6 +20,14 @@ add_cpptools_test(test_posixtime_util  test_posixtime_util.cpp)
 add_cpptools_test(test_singleton       test_singleton.cpp)
 add_cpptools_test(test_sleeprelative   test_sleeprelative.cpp)
 
+# Logging and system utilities
+add_cpptools_test(test_textlogger       test_textlogger.cpp)
+add_cpptools_test(test_currentprocessid test_currentprocessid.cpp)
+add_cpptools_test(test_ctrlc            test_ctrlc.cpp)
+
+# Networking (Asio TCP client/server)
+add_cpptools_test(test_connection_new   test_connection_new.cpp)
+
 # POSIX shared-memory IPC (links rt for shm_open/shm_unlink)
 add_executable(test_interp test_interp.cpp)
 target_link_libraries(test_interp PRIVATE commonlibs GTest::gtest_main)
