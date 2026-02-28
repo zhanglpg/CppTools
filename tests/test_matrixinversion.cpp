@@ -269,3 +269,72 @@ TEST(Matrix, Multiply_NonSquare)
     EXPECT_NEAR(139.0, C(1,0), kEps);
     EXPECT_NEAR(154.0, C(1,1), kEps);
 }
+
+// ============================================================================
+// Numerical robustness
+// ============================================================================
+
+TEST(MatrixInversion, IllConditioned_HilbertMatrix3x3)
+{
+    // Hilbert matrix: H(i,j) = 1/(i+j+1).  Notoriously ill-conditioned.
+    Matrix H(3, 3);
+    for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+            H(i, j) = 1.0 / (i + j + 1);
+
+    Matrix inv(3, 3);
+    ASSERT_TRUE(commonlibs::InvertMatrix<double>(H, inv));
+
+    Matrix product = multiply(H, inv);
+    expect_near_matrix(product, Matrix::identity(3), 1e-6);
+}
+
+TEST(MatrixInversion, LargeValues_DiagonalMatrix)
+{
+    Matrix A(2, 2);
+    A(0,0) = 1e10; A(0,1) = 0;
+    A(1,0) = 0;    A(1,1) = 1e10;
+
+    Matrix inv(2, 2);
+    EXPECT_TRUE(commonlibs::InvertMatrix<double>(A, inv));
+    EXPECT_NEAR(1e-10, inv(0,0), 1e-19);
+    EXPECT_NEAR(1e-10, inv(1,1), 1e-19);
+    EXPECT_NEAR(0.0,   inv(0,1), kEps);
+}
+
+TEST(MatrixInversion, SmallValues_DiagonalMatrix)
+{
+    Matrix A(2, 2);
+    A(0,0) = 1e-10; A(0,1) = 0;
+    A(1,0) = 0;     A(1,1) = 1e-10;
+
+    Matrix inv(2, 2);
+    EXPECT_TRUE(commonlibs::InvertMatrix<double>(A, inv));
+    EXPECT_NEAR(1e10, inv(0,0), 1.0);
+    EXPECT_NEAR(1e10, inv(1,1), 1.0);
+}
+
+TEST(MatrixInversion, PermutationMatrix3x3)
+{
+    // Permutation [[0,1,0],[0,0,1],[1,0,0]] — its inverse is its transpose
+    Matrix P(3, 3);
+    P(0,1) = 1; P(1,2) = 1; P(2,0) = 1;
+
+    Matrix inv(3, 3);
+    ASSERT_TRUE(commonlibs::InvertMatrix<double>(P, inv));
+    expect_near_matrix(inv, P.transpose());
+}
+
+TEST(MatrixInversion, SymmetricPositiveDefinite)
+{
+    // A = [[4,2],[2,3]] — SPD, eigenvalues > 0
+    Matrix A(2, 2);
+    A(0,0) = 4; A(0,1) = 2;
+    A(1,0) = 2; A(1,1) = 3;
+
+    Matrix inv(2, 2);
+    ASSERT_TRUE(commonlibs::InvertMatrix<double>(A, inv));
+
+    Matrix product = multiply(A, inv);
+    expect_near_matrix(product, Matrix::identity(2), 1e-10);
+}

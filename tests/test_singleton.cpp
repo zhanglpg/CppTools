@@ -69,3 +69,46 @@ TEST(Singleton, StringSingleton_ModificationPersists)
     StringSingleton::instance().text = "world";
     EXPECT_EQ("world", StringSingleton::instance().text);
 }
+
+// ---------------------------------------------------------------------------
+// Thread-safety: concurrent access from multiple threads
+// ---------------------------------------------------------------------------
+
+#include <thread>
+#include <vector>
+#include <atomic>
+
+class CountingSingleton : public commonlibs::Singleton<CountingSingleton>
+{
+public:
+    static std::atomic<int> construct_count;
+    CountingSingleton() { construct_count.fetch_add(1); }
+    int value = 100;
+};
+std::atomic<int> CountingSingleton::construct_count{0};
+
+TEST(Singleton, MultithreadedAccessReturnsSameAddress)
+{
+    const int N = 16;
+    std::vector<std::thread> threads;
+    std::vector<void*> addresses(N, nullptr);
+
+    for (int i = 0; i < N; ++i) {
+        threads.emplace_back([&addresses, i]() {
+            addresses[i] = &CountingSingleton::instance();
+        });
+    }
+    for (auto &t : threads) t.join();
+
+    // All threads must have obtained the same address
+    for (int i = 1; i < N; ++i)
+        EXPECT_EQ(addresses[0], addresses[i])
+            << "Thread " << i << " got a different address";
+}
+
+TEST(Singleton, MultithreadedInitCalledExactlyOnce)
+{
+    // CountingSingleton was already constructed in the previous test;
+    // std::call_once guarantees the constructor ran exactly once.
+    EXPECT_EQ(1, CountingSingleton::construct_count.load());
+}

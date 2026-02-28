@@ -111,3 +111,81 @@ TEST(SharedMemory, GetSize_ReturnsRequestedSize)
     ASSERT_EQ(0, srv.open());
     EXPECT_EQ(static_cast<std::size_t>(1024), srv.get_size());
 }
+
+// ---------------------------------------------------------------------------
+// Cross-process communication via fork()
+// ---------------------------------------------------------------------------
+
+#include <sys/wait.h>
+#include <unistd.h>
+
+TEST(SharedMemory, CrossProcess_ChildReadsParentData)
+{
+    const char *name = "/cpptools_test_fork";
+    const std::size_t sz = 256;
+
+    named_shared_mem_server srv(const_cast<char*>(name), sz);
+    ASSERT_EQ(0, srv.open());
+
+    // Parent writes data before forking
+    std::strcpy(srv.get_address(), "from_parent");
+
+    pid_t pid = fork();
+    ASSERT_NE(-1, pid);
+
+    if (pid == 0) {
+        // Child: open as client and verify contents
+        named_shared_mem_client cli(const_cast<char*>(name));
+        if (cli.open() != 0) _exit(1);
+        if (std::strcmp(cli.get_address(), "from_parent") != 0) _exit(2);
+        _exit(0);   // _exit avoids running parent's destructors
+    } else {
+        int status;
+        waitpid(pid, &status, 0);
+        ASSERT_TRUE(WIFEXITED(status));
+        EXPECT_EQ(0, WEXITSTATUS(status))
+            << "Child exited with code " << WEXITSTATUS(status);
+    }
+}
+
+TEST(SharedMemory, CrossProcess_LargePayload)
+{
+    const char *name = "/cpptools_test_fork_lg";
+    const std::size_t sz = 8192;
+
+    named_shared_mem_server srv(const_cast<char*>(name), sz);
+    ASSERT_EQ(0, srv.open());
+
+    // Fill with a repeating pattern
+    char *p = srv.get_address();
+    for (std::size_t i = 0; i < sz - 1; ++i)
+        p[i] = 'A' + static_cast<char>(i % 26);
+    p[sz - 1] = '\0';
+
+    pid_t pid = fork();
+    ASSERT_NE(-1, pid);
+
+    if (pid == 0) {
+        named_shared_mem_client cli(const_cast<char*>(name));
+        if (cli.open() != 0) _exit(1);
+        const char *cp = cli.get_address();
+        for (std::size_t i = 0; i < sz - 1; ++i) {
+            if (cp[i] != static_cast<char>('A' + i % 26)) _exit(2);
+        }
+        _exit(0);
+    } else {
+        int status;
+        waitpid(pid, &status, 0);
+        ASSERT_TRUE(WIFEXITED(status));
+        EXPECT_EQ(0, WEXITSTATUS(status));
+    }
+}
+
+TEST(SharedMemory, ClientOpenBeforeServer_Fails)
+{
+    // Ensure the name doesn't exist
+    shm_unlink("/cpptools_test_noserver");
+
+    named_shared_mem_client cli(const_cast<char*>("/cpptools_test_noserver"));
+    EXPECT_NE(0, cli.open());
+}
