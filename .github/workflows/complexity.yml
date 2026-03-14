@@ -1,0 +1,30 @@
+name: Complexity Check
+
+on:
+  pull_request:
+    branches: [master, main]
+  push:
+    branches: [master, main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  complexity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Complexity Accounting
+        uses: zhanglpg/code-complexity-measure@v1.2
+        with:
+          path: 'commonlibs'
+          threshold: '10'
+          output-format: 'markdown'
+          post-comment: 'true'
+          update-comment: 'true'
