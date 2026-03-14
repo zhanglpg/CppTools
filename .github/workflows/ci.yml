@@ -2,15 +2,17 @@ name: CI
 
 on:
   pull_request:
-    branches: [master]
+    branches: [master, main]
   push:
-    branches: [master]
+    branches: [master, main]
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     strategy:
+      fail-fast: false
       matrix:
         compiler: [gcc, clang]
         build_type: [Debug, Release]
@@ -35,6 +37,10 @@ jobs:
       - name: Build
         run: cmake --build build --parallel $(nproc)
 
-      - name: Test
+      - name: Run unit tests
         working-directory: build
-        run: ctest --output-on-failure
+        run: ctest --output-on-failure --parallel $(nproc)
+
+      - name: Run integration tests
+        working-directory: build
+        run: ctest --output-on-failure -L integration || true
