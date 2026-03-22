@@ -14,7 +14,7 @@ A header-only C++ utility library collection containing data structures, algorit
 - **Signal Processing** — Kalman filter, matrix operations (in `dp/`)
 
 ### Networking
-- **TCP Connection** — Template-based socket connection using Asio
+- **TCP Connection** — Template-based socket connection using Asio (`connection.hpp`, `connection_new.hpp`)
 - **HTTP Client** — Simple HTTP request/response handling
 - **UDP Datagram** — Connectionless messaging
 
@@ -22,8 +22,12 @@ A header-only C++ utility library collection containing data structures, algorit
 - **Singleton** — Thread-safe singleton pattern using `std::call_once`
 - **Text Logger** — File logging with rotation support
 - **POSIX Time Utilities** — Chrono-based time manipulation
-- **Signal Handler** — Unix signal handling (Ctrl+C, etc.)
+- **Signal Handler** — Unix signal handling
+- **Ctrl+C Handler** — SIGINT interception via singleton
+- **Sleep Relative** — Chrono-based relative sleep and system time helpers
+- **Error Status** — CRTP-based error status tracking with common error codes
 - **Process ID** — Current process identification
+- **Unique Ptr Macro** — Legacy compatibility alias for `std::unique_ptr`
 
 ### Inter-Process Communication
 - **Shared Memory** — POSIX `shm_open()`/`mmap()` wrappers (in `interproc/`)
@@ -146,7 +150,7 @@ No external package manager (vcpkg, conan) is used. All third-party dependencies
 ## Testing
 
 - **Framework**: GoogleTest (GTest)
-- **Test Coverage**: 10 test executables covering algorithms, data structures, signal processing, utilities, and IPC
+- **Test Coverage**: 14 test executables covering algorithms, data structures, signal processing, networking, utilities, and IPC
 - **Adding Tests**: Use the `add_cpptools_test(target source)` helper in `tests/CMakeLists.txt`
 
 ## Key Design Patterns
